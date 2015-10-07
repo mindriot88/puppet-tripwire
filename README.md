@@ -1,5 +1,5 @@
-tripwire Module
-===============
+Puppet Tripwire Module
+======================
 
 master branch: [![Build Status](https://secure.travis-ci.org/razorsedge/puppet-tripwire.png?branch=master)](http://travis-ci.org/razorsedge/puppet-tripwire)
 develop branch: [![Build Status](https://secure.travis-ci.org/razorsedge/puppet-tripwire.png?branch=develop)](http://travis-ci.org/razorsedge/puppet-tripwire)
@@ -7,11 +7,12 @@ develop branch: [![Build Status](https://secure.travis-ci.org/razorsedge/puppet-
 Introduction
 ------------
 
-This module ....
+This module installs and configures the [Open Source Tripwire](http://sourceforge.net/projects/tripwire/) package.
 
 Actions:
 
-* None
+* Installs tripwire.
+* Configures tripwire.
 
 OS Support:
 
@@ -24,7 +25,12 @@ Class documentation is available via puppetdoc.
 Examples
 --------
 
-    include 'tripwire'
+Parameterized Class:
+
+    class { 'tripwire';
+      tripwire_site  = 'sitePassPhrase',
+      tripwire_local = 'nodePassPhrase',
+    }
 
 
 Notes
@@ -35,12 +41,20 @@ Notes
 Issues
 ------
 
-* None
+* Completely untested.
 
 TODO
 ----
 
-* None
+* Convert configuration files to templates.
+* Require stahnma/puppet-module-epel.
+* Validate input via stdlib.
+* Apply normal razorsedge/puppet patterns ($ensure/$autoupgrade).
+
+Contributing
+------------
+
+Please see DEVELOP.md for contribution information.
 
 License
 -------
@@ -51,4 +65,8 @@ Copyright
 ---------
 
 Copyright (C) 2012 Mike Arnold <mike@razorsedge.org>
+
+[razorsedge/puppet-tripwire on GitHub](https://github.com/razorsedge/puppet-tripwire)
+
+[razorsedge/tripwire on Puppet Forge](http://forge.puppetlabs.com/razorsedge/tripwire)
 

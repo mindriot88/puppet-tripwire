@@ -1,0 +1,45 @@
+{
+  "name": "razorsedge-tripwire",
+  "version": "0.0.1",
+  "author": "razorsedge",
+  "summary": "Puppet Tripwire Module",
+  "license": "Apache-2.0",
+  "project_page": "https://github.com/razorsedge/puppet-tripwire",
+  "issues_url": "https://github.com/razorsedge/puppet-tripwire/issues",
+  "source": "https://github.com/razorsedge/puppet-tripwire.git",
+  "tags": [ "RHEL", "rhel", "CentOS", "OEL", "fedora" ],
+  "dependencies": [
+    {
+      "name": "razorsedge/lsb",
+      "version_requirement": ">=1.0.0 <2.0.0"
+    }
+  ],
+  "operatingsystem_support": [
+    {
+      "operatingsystem": "RedHat",
+      "operatingsystemrelease": [ "5", "6" ]
+    },
+    {
+      "operatingsystem": "CentOS",
+      "operatingsystemrelease": [ "5", "6" ]
+    },
+    {
+      "operatingsystem": "OracleLinux",
+      "operatingsystemrelease": [ "5", "6" ]
+    },
+    {
+      "operatingsystem": "Fedora",
+      "operatingsystemrelease": [ "16", "17", "18", "19", "20" ]
+    }
+  ],
+  "requirements": [
+    {
+      "name": "pe",
+      "version_requirement": "3.x"
+    },
+    {
+      "name": "puppet",
+      "version_requirement": ">=2.7.20 <4.0.0"
+    }
+  ]
+}

@@ -1,0 +1,398 @@
+###
+### File managed by Puppet
+###
+# /etc/tripwire/twpol.txt
+#
+# $Id: twpol.txt.FC12.powerpc,v 1.1 2010/04/29 14:42:21 mike Exp $
+#
+# This config assumes use on Fedora 12+ and is tuned for a server install.
+# You will want to remove the sections marked WORKSTATION if this box will
+# have any hardware added or removed on a regular basis (like hotplug).
+#
+# man twpolicy
+#
+# A number of variables are predefined by Tripwire and may not be
+# changed.  These variables represent different ways that files can
+# change, and can be used on the right side of rules to design a policy
+# file quickly.
+#
+# ReadOnly       ReadOnly is good for files that are widely available
+#                but are intended to be read-only.
+#                Value: +pinugtsdbmCM-rlacSH
+#
+# Dynamic        Dynamic is good for monitoring user directories and
+#                files that tend to be dynamic in behavior.
+#                Value: +pinugtd-srlbamcCMSH
+#
+# Growing        The Growing variable is intended for files that should
+#                only get larger.
+#                Value: +pinugtdl-srbamcCMSH
+#
+# Device         Device is good for devices or other files that Tripwire
+#                should not attempt to open.
+#                Value: +pugsdr-intlbamcCMSH
+#
+# IgnoreAll      IgnoreAll tracks a file's presence or absence, but
+#                doesn't check any other properties.
+#                Value: -pinugtsdrlbamcCMSH
+#
+# IgnoreNone     IgnoreNone turns on all properties and provides a con-
+#                venient starting point for defining your own property
+#                masks.  (For example, mymask = $(IgnoreNone) -ar;)
+#                Value: +pinugtsdrbamcCMSH-l
+#
+# Characters used in property masks, with descriptions:
+#   -     Ignore the following properties
+#   +     Record and check the following properties
+#   a     Access timestamp
+#   b     Number of blocks allocated
+#   c     Inode timestamp (create/modify)
+#   d     ID of device on which inode resides
+#   g     File owner's group ID
+#   i     Inode number
+#   l     File is increasing in size (a "growing file")
+#   m     Modification timestamp
+#   n     Number of links (inode reference count)
+#   p     Permissions and file mode bits
+#   r     ID of device pointed to by inode
+#         (valid only for device objects)
+#   s     File size
+#   t     File type
+#   u     File owner's user ID
+#   C     CRC-32 hash value
+#   H     Haval hash value
+#   M     MD5 hash value
+#   S     SHA hash value
+
+# Global Variable Definitions
+@@section GLOBAL
+TWROOT=/usr/sbin;
+TWBIN=/usr/sbin;
+TWPOL="/etc/tripwire";
+TWDB="/var/lib/tripwire";
+TWSKEY="/etc/tripwire";
+TWLKEY="/etc/tripwire";
+TWREPORT="/var/lib/tripwire/report";
+
+@@section FS
+SEC_CRIT      = $(IgnoreNone)-SHa ;  # Critical files that cannot change
+SEC_BIN       = $(ReadOnly) ;        # Binaries that should not change
+SEC_CONFIG    = $(Dynamic) ;         # Config files that are changed
+                                     # infrequently but accessed often
+SEC_LOG       = $(Growing) ;         # Files that grow, but that should never
+                                     # change ownership
+SEC_INVARIANT = +tpug ;              # Directories that should never change
+                                     # permission or ownership
+
+SEV_LOW       = 33 ;                 # Non-critical files that are of minimal
+                                     # security impact
+SEV_MED       = 66 ;                 # Non-critical files that are of
+                                     # significant security impact
+SEV_HI        = 100 ;                # Critical files that are significant
+                                     # points of vulnerability
+
+# Tripwire Binaries
+(
+  rulename = "Tripwire Binaries",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  $(TWBIN)/siggen                      -> $(SEC_CRIT) ;
+  $(TWBIN)/tripwire                    -> $(SEC_CRIT) ;
+  $(TWBIN)/twadmin                     -> $(SEC_CRIT) ;
+  $(TWBIN)/twprint                     -> $(SEC_CRIT) ;
+}
+
+# Tripwire Data Files - Configuration Files, Policy Files, Keys, Reports,
+# Databases
+(
+  rulename = "Tripwire Data Files",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  # NOTE: We remove the inode attribute because when Tripwire creates a backup,
+  # it does so by renaming the old file and creating a new one (which will
+  # have a new inode number).  Inode is left turned on for keys, which shouldn't
+  # ever change.
+
+  # NOTE: The first integrity check triggers this rule and each integrity check
+  # afterward triggers this rule until a database update is run, since the
+  # database file does not exist before that point.
+  $(TWDB)                              -> $(Dynamic) -i ;
+  $(TWPOL)/tw.pol                      -> $(ReadOnly) -i ;
+  $(TWPOL)/tw.cfg                      -> $(ReadOnly) -i ;
+  $(TWLKEY)/local.key                  -> $(SEC_CRIT) ;
+  $(TWSKEY)/site.key                   -> $(SEC_CRIT) ;
+  # Don't scan the individual reports
+  $(TWREPORT)                          -> $(Dynamic) (recurse=0) ;
+}
+
+# Commonly accessed directories that should remain static with  regards
+# to owner and group.
+(
+  rulename = "Invariant Directories",
+  recurse = false,
+  severity = $(SEV_LOW)
+)
+{
+  /                                    -> $(SEC_INVARIANT) ;
+  /home/                               -> $(SEC_INVARIANT) ;
+  /tmp/                                -> $(SEC_INVARIANT) ;
+  /usr/tmp/                            -> $(SEC_INVARIANT) ;
+  /var/                                -> $(SEC_INVARIANT) ;
+  /var/tmp/                            -> $(SEC_INVARIANT) ;
+}
+
+# Add-on application software packages
+(
+  rulename = "Add-on application software",
+  recurse = true,
+  severity = $(SEV_MED)
+)
+{
+  /opt/                                -> $(ReadOnly) ;
+}
+
+# System software
+(
+  rulename = "System software",
+  recurse = true,
+  severity = $(SEV_MED)
+)
+{
+  /usr/                                -> $(ReadOnly) ;
+  !/usr/share/doc/ ; # Prune out all the documentation.
+  !/usr/share/man/ ; # Prune out all the documentation.
+}
+
+# System binaries
+(
+  rulename = "OS executables",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  /bin/                                -> $(ReadOnly) ;
+  /sbin/                               -> $(ReadOnly) ;
+  /usr/bin/                            -> $(ReadOnly) ;
+  /usr/libexec/                        -> $(ReadOnly) ;
+  /usr/sbin/                           -> $(ReadOnly) ;
+  /usr/local/bin/                      -> $(ReadOnly) ;
+  /usr/local/libexec/                  -> $(ReadOnly) ;
+  /usr/local/sbin/                     -> $(ReadOnly) ;
+ #/usr/X11R6/bin/                      -> $(ReadOnly) ;
+}
+
+# Libraries
+(
+  rulename = "Libraries",
+  recurse = true,
+  severity = $(SEV_MED)
+)
+{
+  /lib/                                -> $(ReadOnly) ;
+  /usr/lib/                            -> $(ReadOnly) ;
+  /usr/local/lib/                      -> $(ReadOnly) ;
+  #/usr/X11R6/lib/                      -> $(ReadOnly) ;
+}
+
+# Configuration files.
+(
+  rulename = "Configuration files",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  # Due to all the cron and other activity, modification time on /etc
+  # is not monitored.
+  /etc/                                -> $(ReadOnly) -m ;
+  /etc/group                           -> $(SEC_CRIT) ;
+  /etc/group-                          -> $(SEC_CRIT) ;
+  /etc/gshadow                         -> $(SEC_CRIT) ;
+  /etc/gshadow-                        -> $(SEC_CRIT) ;
+  /etc/pam.d/                          -> $(SEC_CRIT) ;
+  /etc/passwd                          -> $(SEC_CRIT) ;
+  /etc/passwd-                         -> $(SEC_CRIT) ;
+  /etc/shadow                          -> $(SEC_CRIT) ;
+  /etc/shadow-                         -> $(SEC_CRIT) ;
+  /etc/securetty                       -> $(SEC_CRIT) ;
+  /etc/security/                       -> $(SEC_CRIT) ;
+  /etc/selinux/                        -> $(SEC_CRIT) ;
+  /usr/local/etc/                      -> $(ReadOnly) ;
+}
+
+# Critical System Boot Files.
+# These files are critical to a correct system boot.
+(
+  rulename = "Critical system boot files",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  /boot/                               -> $(SEC_CRIT) ;
+  !/boot/System.map ;
+  !/boot/module-info ;
+  /sbin/installkernel                  -> $(SEC_CRIT) ;
+  # GRUB
+ #/sbin/grub                           -> $(SEC_CRIT) ;
+ #/sbin/grub-install                   -> $(SEC_CRIT) ;
+ #/sbin/grub-md5-crypt                 -> $(SEC_CRIT) ;
+ #/sbin/grub-terminfo                  -> $(SEC_CRIT) ;
+ #/usr/share/grub/                     -> $(SEC_CRIT) ;
+  # LILO
+ #/sbin/lilo                           -> $(SEC_CRIT) ;
+  # yaboot
+  /sbin/ofpath                         -> $(SEC_CRIT) ;
+  /sbin/yabootconfig                   -> $(SEC_CRIT) ;
+  /sbin/ybin                           -> $(SEC_CRIT) ;
+  /usr/lib/yaboot                      -> $(SEC_CRIT) ;
+}
+
+# These files change the behavior of the root account
+(
+  rulename = "Root config files",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  # Catch all additions to /root
+  /root/                               -> $(SEC_CRIT) ;
+  /root/.bash_history                  -> $(Dynamic) -s ;
+  # So, you like to login as root, eh?
+  # Changes Inode number on login
+ #/root/.Xauthority                    -> $(Dynamic) -i ;
+}
+
+# SElinux kernel working files and devices.
+(
+  rulename = "SElinux devices",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  # The ctime and mtime on these directories and files will change on
+  # every reboot if using SElinux on kernel >= 2.6.
+  /selinux/                            -> $(Device) ;
+}
+
+# These files change every time the system boots or at certain intervals.
+# If tripwire complains that any given file does not exits, then comment out
+# it's entry in this section.
+(
+  rulename = "System boot changes",
+  recurse = true,
+  severity = $(SEV_HI)
+)
+{
+  # hwclock writes to this file on system shutdown.
+  /etc/adjtime                         -> $(Dynamic) ;
+  # Created by blkid in e2fsprogs
+  /etc/blkid/blkid.tab                 -> $(Dynamic) -i ;
+  /etc/blkid/blkid.tab.old             -> $(Dynamic) -i ;
+  # This file is created if the console is on a serial port and the system
+  # switches to runlevel 1.
+# /etc/ioctl.save                      -> $(Dynamic) ;
+  # Changes on reboot by kudzu
+  /etc/fstab                           -> $(Dynamic) -i ;
+# /etc/sysconfig/hwconf                -> $(Dynamic) ;
+  # Package installs can rebuild this cache:
+  /etc/ld.so.cache                     -> $(Dynamic) ;
+  # LVM rebuilds this file:
+  /etc/lvm/cache/.cache                -> $(Dynamic) ;
+  # Inode number changes on any mount/unmount.
+  /etc/mtab                            -> $(Dynamic) -i ;
+  # Cron jobs run to rebuild this cache:
+  /etc/prelink.cache                   -> $(Dynamic) -i ;
+  # dhclient will modify these unless told not to.
+  /etc/ntp.conf                        -> $(Dynamic) -i ;
+# /etc/ntp.conf.predhclient            -> $(Dynamic) -i ;
+  /etc/ntp/step-tickers                -> $(Dynamic) -i ;
+# /etc/ntp/step-tickers.predhclient    -> $(Dynamic) -i ;
+  /etc/resolv.conf                     -> $(Dynamic) -i ;
+# /etc/resolv.conf.predhclient         -> $(Dynamic) -i ;
+  /etc/yp.conf                         -> $(Dynamic) -i ;
+# /etc/yp.conf.predhclient             -> $(Dynamic) -i ;
+  # cups touches these files every night:
+  #/etc/cups/certs                      -> $(ReadOnly) -m ;
+  #/etc/cups/certs/0                    -> $(Dynamic) -i ;
+  /etc/printcap                        -> $(ReadOnly) -m ;
+  # Sendmail saves statistics data here:
+# /etc/mail/statistics                 -> $(Dynamic) ;
+  # Rebuilt every time sendmail starts:
+  /etc/aliases.db                      -> $(Dynamic) ;
+  # Postfix touches this file every time it uses encryption.
+# /etc/postfix/prng_exch               -> $(Dynamic) ;
+}
+
+
+# WORKSTATION
+# If you have a workstation or system that will be loading/unloading
+# kernel modules, you may want to uncomment the next line.
+#@@end
+
+# Devices.
+(
+  rulename = "Devices",
+  recurse = false,
+  severity = $(SEV_MED)
+)
+{
+  # The ctime and mtime on these directories and files will change on
+  # every reboot if using udev on kernel >= 2.6.
+  /dev/                                -> $(Device) (recurse=true) ;
+  /dev/ttyS0                           -> $(Device) -ug ;
+  /dev/tty1                            -> $(Device) -ug ;
+  /dev/tty2                            -> $(Device) -ug ;
+  /dev/tty3                            -> $(Device) -ug ;
+  /dev/tty4                            -> $(Device) -ug ;
+  /dev/tty5                            -> $(Device) -ug ;
+  /dev/tty6                            -> $(Device) -ug ;
+  !/dev/.udev/queue.bin ;
+  !/dev/pts ;
+  !/dev/shm ;
+  # Files in /sys will be added/removed depending on what kernel
+  # modules are loaded.
+  /sys/                                -> $(Device) (recurse=true) ;
+  /proc/buddyinfo                      -> $(Device) ;
+  /proc/cmdline                        -> $(Device) ;
+  /proc/cpuinfo                        -> $(Device) ;
+  /proc/crypto                         -> $(Device) ;
+  /proc/devices                        -> $(Device) ;
+  /proc/diskstats                      -> $(Device) ;
+  /proc/dma                            -> $(Device) ;
+  /proc/driver/rtc                     -> $(Device) ;
+  /proc/execdomains                    -> $(Device) ;
+  /proc/fb                             -> $(Device) ;
+  /proc/filesystems                    -> $(Device) ;
+  /proc/interrupts                     -> $(Device) ;
+  /proc/iomem                          -> $(Device) ;
+  /proc/ioports                        -> $(Device) ;
+  /proc/kallsyms                       -> $(Device) ;
+# /proc/kcore                          -> $(Device) ;
+  /proc/kmsg                           -> $(Device) ;
+  /proc/loadavg                        -> $(Device) ;
+  /proc/locks                          -> $(Device) ;
+  /proc/mdstat                         -> $(Device) ;
+  /proc/meminfo                        -> $(Device) ;
+  /proc/misc                           -> $(Device) ;
+  /proc/modules                        -> $(Device) ;
+  /proc/mounts                         -> $(Device) ;
+# /proc/mtrr                           -> $(Device) ;
+  /proc/net                            -> $(Device) ;
+  /proc/partitions                     -> $(Device) ;
+# /proc/pci                            -> $(Device) ;
+  /proc/scsi                           -> $(Device) ;
+  /proc/self                           -> $(Device) ;
+  /proc/slabinfo                       -> $(Device) ;
+  /proc/stat                           -> $(Device) ;
+  /proc/swaps                          -> $(Device) ;
+  /proc/sys                            -> $(Device) ;
+  /proc/uptime                         -> $(Device) ;
+  /proc/version                        -> $(Device) ;
+  /proc/vmstat                         -> $(Device) ;
+}
+
+@@end
+
